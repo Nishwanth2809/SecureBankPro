@@ -1,0 +1,34 @@
+# ── Maven ────────────────────────────────────────────────────────────────────
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+*.settings/
+.factorypath
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs & Exports ───────────────────────────────────────────────────────────
+logs/
+exports/
+*.log
+
+# ── Backups & Serialised Data ────────────────────────────────────────────────
+backups/
+
+# ── Application secrets — NEVER commit real credentials ─────────────────────
+# Keep application.properties in git but strip secrets before pushing.
+# Rename to application-local.properties for local overrides.
+# application.properties   ← uncomment to exclude entirely
+
+# ── Spring Boot devtools restart trigger ─────────────────────────────────────
+.reloadtrigger
