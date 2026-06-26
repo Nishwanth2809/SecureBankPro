@@ -9,8 +9,8 @@
 ![Swagger](https://img.shields.io/badge/Swagger-OpenAPI_3-85EA2D?style=for-the-badge&logo=swagger)
 ![Maven](https://img.shields.io/badge/Maven-3.9.6-C71A36?style=for-the-badge&logo=apache-maven)
 
-**A full-stack Spring Boot banking REST API built across 17 learning phases**  
-*From Java basics → OOP → Spring Boot → JPA → Security → JWT → Testing → Swagger → GitHub*
+**A full-stack Spring Boot banking REST API built across 18 learning phases**  
+*From Java basics → OOP → Spring Boot → JPA → Security → JWT → Testing → Swagger → GitHub → Docker*
 
 [📖 API Docs (Swagger)](#api-documentation) • [⚙️ Setup](#getting-started) • [🧪 Testing](#testing) • [🗂️ Project Phases](#project-phases)
 
@@ -252,7 +252,8 @@ This project was built phase-by-phase as a Java learning journey:
 | 14 | Multithreading | Async logging, synchronized transfers, lock ordering |
 | 15 | Testing | JUnit 5, Mockito, MockMvc, 33 passing tests |
 | 16 | Swagger / OpenAPI | SpringDoc, JWT Bearer auth, request/response examples |
-| **17** | **Git & GitHub** | **git init, branching, clean commits, README, CI/CD ready** |
+| 17 | Git & GitHub | git init, branching, clean commits, README, CI/CD ready |
+| **18** | **Deployment** | **Docker, Docker Compose, railway.toml, env vars, test isolation** |
 
 ---
 
