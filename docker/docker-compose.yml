@@ -1,7 +1,65 @@
+# ── SecureBankPro — Docker Compose ───────────────────────────────────────────
+# Local development compose file.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yml up --build
+#   docker compose -f docker/docker-compose.yml down
+#
+# Environment variables are loaded from docker/.env (copy from docker/.env.example)
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
-  securebank-pro:
+
+  # ── Spring Boot Application ─────────────────────────────────────────────────
+  securebank-app:
+    container_name: securebank-pro
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: ..                   # Project root (where Dockerfile lives)
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env                        # Load secrets from docker/.env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod  # Activates application-prod.properties
+    depends_on:
+      securebank-db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - securebank-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/v3/api-docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── PostgreSQL (local dev only — use Supabase in production) ─────────────────
+  securebank-db:
+    container_name: securebank-postgres
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: securebank
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-localdev123}
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # Persist data between restarts
+      - ../src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - securebank-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d securebank"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  securebank-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+    name: securebank-pgdata

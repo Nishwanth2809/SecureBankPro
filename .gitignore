@@ -1,6 +1,8 @@
 # ── Maven ────────────────────────────────────────────────────────────────────
 target/
 !.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/
+.maven/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
@@ -32,3 +34,9 @@ backups/
 
 # ── Spring Boot devtools restart trigger ─────────────────────────────────────
 .reloadtrigger
+
+# ── Environment variable files (SECRETS — never commit real .env) ─────────────
+docker/.env
+.env
+!docker/.env.example
+!.env.example
