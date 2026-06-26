@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SecureBankPro — API Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --card:     #1c2230;
+      --border:   #2a3448;
+      --accent:   #4f8ef7;
+      --accent2:  #7c5cfc;
+      --green:    #3fb950;
+      --red:      #f85149;
+      --yellow:   #d29922;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --radius:   12px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .logo svg { width: 28px; height: 28px; }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      transition: all 0.3s;
+    }
+    #status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--yellow);
+      animation: pulse 2s infinite;
+    }
+    #status-dot.online { background: var(--green); animation: none; }
+    #status-dot.offline { background: var(--red); animation: none; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    #token-display {
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── LAYOUT ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      flex: 1;
+    }
+
+    /* ── SIDEBAR ── */
+    nav {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-section {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 12px 20px 6px;
+    }
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      text-align: left;
+      width: 100%;
+      border-radius: 0;
+      transition: background .15s, color .15s;
+      font-family: inherit;
+    }
+    .nav-btn:hover { background: var(--card); color: var(--text); }
+    .nav-btn.active { background: rgba(79,142,247,.12); color: var(--accent); border-right: 2px solid var(--accent); }
+    .nav-btn .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .nav-btn.active .dot { background: var(--accent); }
+
+    /* ── CONTENT ── */
+    .content {
+      padding: 32px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .panel { display: none; flex-direction: column; gap: 20px; }
+    .panel.active { display: flex; }
+
+    .panel-title {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .panel-title span {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 10px;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 16px;
+    }
+
+    /* ── FORM ELEMENTS ── */
+    .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .form-row label { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .form-row input, .form-row select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+    .form-row input:focus, .form-row select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,142,247,.15);
+    }
+    .form-row select option { background: var(--card); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+    }
+    .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+    .btn-primary:active { transform: none; }
+    .btn-danger { background: rgba(248,81,73,.15); color: var(--red); border: 1px solid rgba(248,81,73,.3); }
+    .btn-danger:hover { background: rgba(248,81,73,.25); }
+    .btn-success { background: rgba(63,185,80,.12); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+    .btn-success:hover { background: rgba(63,185,80,.22); }
+    .btn-warn { background: rgba(210,153,34,.12); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+    .btn-warn:hover { background: rgba(210,153,34,.22); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+    /* ── RESPONSE BOX ── */
+    .response-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 60px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 260px;
+      overflow-y: auto;
+      transition: border-color .3s;
+    }
+    .response-box.success { border-color: var(--green); color: var(--green); }
+    .response-box.error { border-color: var(--red); color: var(--red); }
+
+    /* ── TABLE ── */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: .06em;
+    }
+    .data-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(42,52,72,.5);
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,.02); }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block;
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .badge-green { background: rgba(63,185,80,.15); color: var(--green); }
+    .badge-red   { background: rgba(248,81,73,.15); color: var(--red); }
+    .badge-blue  { background: rgba(79,142,247,.15); color: var(--accent); }
+    .badge-purple{ background: rgba(124,92,252,.15); color: var(--accent2); }
+
+    /* ── QUICK STATS (auth panel) ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value { font-size: 26px; font-weight: 700; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── GRID 2-COL ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ── LOADING ── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── TOAST ── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9999;
+    }
+    .toast {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      min-width: 260px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn .25s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error   { border-left: 3px solid var(--red); }
+    .toast.info    { border-left: 3px solid var(--accent); }
+    @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="url(#grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <defs>
+        <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4f8ef7"/>
+          <stop offset="100%" stop-color="#7c5cfc"/>
+        </linearGradient>
+      </defs>
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+      <line x1="12" y1="12" x2="12" y2="16"/>
+      <line x1="10" y1="14" x2="14" y2="14"/>
+    </svg>
+    SecureBankPro
+  </div>
+  <div class="header-right">
+    <div id="status-badge">
+      <div id="status-dot"></div>
+      <span id="status-text">Checking...</span>
+    </div>
+    <div id="token-display">No JWT token — please log in</div>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="main-grid">
+
+  <!-- SIDEBAR -->
+  <nav>
+    <div class="nav-section">Authentication</div>
+    <button class="nav-btn active" onclick="showPanel('auth')" id="nav-auth">
+      <div class="dot"></div> Auth
+    </button>
+
+    <div class="nav-section">Banking</div>
+    <button class="nav-btn" onclick="showPanel('accounts')" id="nav-accounts">
+      <div class="dot"></div> Accounts
+    </button>
+    <button class="nav-btn" onclick="showPanel('deposit')" id="nav-deposit">
+      <div class="dot"></div> Deposit
+    </button>
+    <button class="nav-btn" onclick="showPanel('withdraw')" id="nav-withdraw">
+      <div class="dot"></div> Withdraw
+    </button>
+    <button class="nav-btn" onclick="showPanel('transfer')" id="nav-transfer">
+      <div class="dot"></div> Transfer
+    </button>
+    <button class="nav-btn" onclick="showPanel('history')" id="nav-history">
+      <div class="dot"></div> History
+    </button>
+
+    <div class="nav-section">Admin</div>
+    <button class="nav-btn" onclick="showPanel('admin')" id="nav-admin">
+      <div class="dot"></div> Admin Panel
+    </button>
+  </nav>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ── AUTH PANEL ── -->
+    <div class="panel active" id="panel-auth">
+      <div class="panel-title">Authentication <span>POST /api/auth</span></div>
+
+      <div class="grid-2">
+        <!-- REGISTER -->
+        <div class="card">
+          <div class="card-title">Register</div>
+          <div class="form-row">
+            <label>Full Name</label>
+            <input id="reg-name" type="text" placeholder="e.g. John Doe"/>
+          </div>
+          <div class="form-row">
+            <label>Email</label>
+            <input id="reg-email" type="email" placeholder="john@example.com"/>
+          </div>
+          <div class="form-row">
+            <label>Password (min 6 chars)</label>
+            <input id="reg-pass" type="password" placeholder="••••••••"/>
+          </div>
+          <button class="btn btn-primary" onclick="register()" id="btn-reg">Register</button>
+          <div class="response-box" id="res-register" style="margin-top:12px">Waiting...</div>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="card">
+          <div class="card-title">Login</div>
+          <div class="form-row">
+            <label>Email</label>
+            <input id="login-email" type="email" placeholder="john@example.com" value="admin@securebank.com"/>
+          </div>
+          <div class="form-row">
+            <label>Password</label>
+            <input id="login-pass" type="password" placeholder="••••••••" value="Admin@123"/>
+          </div>
+          <button class="btn btn-primary" onclick="login()" id="btn-login">Login &amp; Get Token</button>
+          <div class="response-box" id="res-login" style="margin-top:12px">Waiting...</div>
+        </div>
+      </div>
+
+      <!-- SESSION CHECK -->
+      <div class="card">
+        <div class="card-title">Session Check &amp; Logout</div>
+        <div class="grid-2">
+          <div>
+            <div class="form-row">
+              <label>Email</label>
+              <input id="sess-email" type="text" placeholder="email@example.com"/>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-success" onclick="checkSession()">Check Session</button>
+              <button class="btn btn-warn" onclick="logout()">Logout</button>
+            </div>
+          </div>
+          <div class="response-box" id="res-session">Waiting...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ACCOUNTS PANEL ── -->
+    <div class="panel" id="panel-accounts">
+      <div class="panel-title">Accounts <span>POST/GET /api/accounts</span></div>
+      <div class="grid-2">
+        <!-- CREATE ACCOUNT -->
+        <div class="card">
+          <div class="card-title">Create Account</div>
+          <div class="form-row">
+            <label>Owner Email</label>
+            <input id="acc-email" type="text" placeholder="owner@example.com"/>
+          </div>
+          <div class="form-row">
+            <label>Account Number</label>
+            <input id="acc-number" type="text" placeholder="e.g. SBP3001"/>
+          </div>
+          <div class="form-row">
+            <label>Account Type</label>
+            <select id="acc-type">
+              <option value="SAVINGS">SAVINGS</option>
+              <option value="CURRENT">CURRENT</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Initial Balance</label>
+            <input id="acc-balance" type="number" placeholder="0.00" min="0" step="0.01"/>
+          </div>
+          <button class="btn btn-primary" onclick="createAccount()">Create Account</button>
+          <div class="response-box" id="res-create-acc" style="margin-top:12px">Waiting...</div>
+        </div>
+
+        <!-- GET SINGLE ACCOUNT -->
+        <div class="card">
+          <div class="card-title">Fetch Account</div>
+          <div class="form-row">
+            <label>Account Number</label>
+            <input id="fetch-acc-num" type="text" placeholder="e.g. SBP1001"/>
+          </div>
+          <button class="btn btn-primary" onclick="fetchAccount()">Fetch</button>
+          <div class="response-box" id="res-fetch-acc" style="margin-top:12px">Waiting...</div>
+        </div>
+      </div>
+
+      <!-- ALL ACCOUNTS TABLE -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          All Accounts
+          <button class="btn btn-primary" onclick="loadAllAccounts()" style="font-size:12px;padding:6px 12px">↻ Refresh</button>
+        </div>
+        <div id="accounts-table-wrap">
+          <div class="response-box">Click Refresh to load all accounts.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DEPOSIT PANEL ── -->
+    <div class="panel" id="panel-deposit">
+      <div class="panel-title">Deposit <span>POST /api/transactions/deposit</span></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Deposit Money</div>
+          <div class="form-row">
+            <label>Account Number</label>
+            <input id="dep-acc" type="text" placeholder="e.g. SBP1001"/>
+          </div>
+          <div class="form-row">
+            <label>Amount</label>
+            <input id="dep-amount" type="number" placeholder="0.00" min="0.01" step="0.01"/>
+          </div>
+          <button class="btn btn-success" onclick="deposit()">Deposit</button>
+        </div>
+        <div class="response-box" id="res-deposit" style="align-self:start">Waiting...</div>
+      </div>
+    </div>
+
+    <!-- ── WITHDRAW PANEL ── -->
+    <div class="panel" id="panel-withdraw">
+      <div class="panel-title">Withdraw <span>POST /api/transactions/withdraw</span></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Withdraw Money</div>
+          <div class="form-row">
+            <label>Account Number</label>
+            <input id="wdraw-acc" type="text" placeholder="e.g. SBP1001"/>
+          </div>
+          <div class="form-row">
+            <label>Amount</label>
+            <input id="wdraw-amount" type="number" placeholder="0.00" min="0.01" step="0.01"/>
+          </div>
+          <button class="btn btn-warn" onclick="withdraw()">Withdraw</button>
+        </div>
+        <div class="response-box" id="res-withdraw" style="align-self:start">Waiting...</div>
+      </div>
+    </div>
+
+    <!-- ── TRANSFER PANEL ── -->
+    <div class="panel" id="panel-transfer">
+      <div class="panel-title">Transfer <span>POST /api/transactions/transfer</span></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Transfer Money</div>
+          <div class="form-row">
+            <label>Source Account</label>
+            <input id="tr-src" type="text" placeholder="e.g. SBP1001"/>
+          </div>
+          <div class="form-row">
+            <label>Destination Account</label>
+            <input id="tr-dst" type="text" placeholder="e.g. SBP2001"/>
+          </div>
+          <div class="form-row">
+            <label>Amount</label>
+            <input id="tr-amount" type="number" placeholder="0.00" min="0.01" step="0.01"/>
+          </div>
+          <button class="btn btn-primary" onclick="transfer()">Transfer</button>
+        </div>
+        <div class="response-box" id="res-transfer" style="align-self:start">Waiting...</div>
+      </div>
+    </div>
+
+    <!-- ── HISTORY PANEL ── -->
+    <div class="panel" id="panel-history">
+      <div class="panel-title">Transaction History <span>GET /api/transactions/history/{accountNumber}</span></div>
+      <div class="card">
+        <div class="card-title">Look up history</div>
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div class="form-row" style="flex:1;margin-bottom:0">
+            <label>Account Number</label>
+            <input id="hist-acc" type="text" placeholder="e.g. SBP1001"/>
+          </div>
+          <button class="btn btn-primary" onclick="loadHistory()">Load History</button>
+        </div>
+      </div>
+      <div class="card">
+        <div id="history-table-wrap">
+          <div class="response-box">Enter an account number and click Load History.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ADMIN PANEL ── -->
+    <div class="panel" id="panel-admin">
+      <div class="panel-title">Admin Panel <span>PUT/DELETE /api/admin</span></div>
+      <div class="card" style="background: linear-gradient(135deg, rgba(248,81,73,.05), rgba(124,92,252,.05)); border-color: rgba(248,81,73,.2);">
+        <div class="card-title" style="color: var(--yellow)">⚠ Admin operations require ROLE_ADMIN JWT token</div>
+        <div style="font-size:12px;color:var(--muted)">Default admin credentials: <code style="color:var(--text)">admin@securebank.com</code> / <code style="color:var(--text)">Admin@123</code>. Login in the Auth panel first.</div>
+      </div>
+
+      <div class="grid-2">
+        <!-- FREEZE -->
+        <div class="card">
+          <div class="card-title">Freeze Account</div>
+          <div class="form-row">
+            <label>Account Number</label>
+            <input id="frz-acc" type="text" placeholder="e.g. SBP1001"/>
+          </div>
+          <button class="btn btn-warn" onclick="adminFreeze()">Freeze</button>
+          <div class="response-box" id="res-freeze" style="margin-top:12px">Waiting...</div>
+        </div>
+
+        <!-- UNBLOCK -->
+        <div class="card">
+          <div class="card-title">Unblock Account</div>
+          <div class="form-row">
+            <label>Account Number</label>
+            <input id="unb-acc" type="text" placeholder="e.g. SBP1001"/>
+          </div>
+          <button class="btn btn-success" onclick="adminUnblock()">Unblock</button>
+          <div class="response-box" id="res-unblock" style="margin-top:12px">Waiting...</div>
+        </div>
+      </div>
+
+      <!-- DELETE USER -->
+      <div class="card">
+        <div class="card-title">Delete User</div>
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div class="form-row" style="flex:1;margin-bottom:0">
+            <label>User ID</label>
+            <input id="del-uid" type="number" placeholder="e.g. 2" min="1"/>
+          </div>
+          <button class="btn btn-danger" onclick="adminDeleteUser()">Delete User</button>
+        </div>
+        <div class="response-box" id="res-delete" style="margin-top:12px">Waiting...</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main-grid -->
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+  const API = 'http://localhost:8080';
+  let jwtToken = null;
+
+  // ── UTILS ──────────────────────────────────────────────────────────────────
+
+  function setBox(id, text, type) {
+    const el = document.getElementById(id);
+    el.className = 'response-box ' + (type || '');
+    el.textContent = typeof text === 'object' ? JSON.stringify(text, null, 2) : text;
+  }
+
+  function headers(json = true) {
+    const h = {};
+    if (json) h['Content-Type'] = 'application/json';
+    if (jwtToken) h['Authorization'] = 'Bearer ' + jwtToken;
+    return h;
+  }
+
+  async function apicall(method, path, body, resId) {
+    try {
+      const opts = { method, headers: headers(!!body) };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(API + path, opts);
+      let data;
+      try { data = await r.json(); } catch { data = { raw: await r.text() }; }
+      const ok = r.ok;
+      setBox(resId, data, ok ? 'success' : 'error');
+      toast(ok ? 'success' : 'error', ok ? '✓ ' + (data.message || 'OK') : '✗ ' + (data.message || 'Error'));
+      return { ok, data };
+    } catch (e) {
+      setBox(resId, 'Network error: ' + e.message, 'error');
+      toast('error', '✗ Cannot reach server — is it running?');
+      return { ok: false };
+    }
+  }
+
+  function toast(type, msg) {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = 'toast ' + type;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  function showPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    document.getElementById('nav-' + name).classList.add('active');
+  }
+
+  function updateTokenDisplay() {
+    const el = document.getElementById('token-display');
+    el.textContent = jwtToken ? ('JWT: ' + jwtToken.substring(0, 40) + '...') : 'No JWT token — please log in';
+  }
+
+  // ── SERVER STATUS ──────────────────────────────────────────────────────────
+
+  async function checkServer() {
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    try {
+      await fetch(API + '/api/auth/session?email=x@x.com', { signal: AbortSignal.timeout(2000) });
+      dot.className = 'online';
+      text.textContent = 'Server online :8080';
+    } catch {
+      dot.className = 'offline';
+      text.textContent = 'Server offline';
+    }
+  }
+  checkServer();
+  setInterval(checkServer, 5000);
+
+  // ── AUTH ──────────────────────────────────────────────────────────────────
+
+  async function register() {
+    await apicall('POST', '/api/auth/register', {
+      fullName: document.getElementById('reg-name').value,
+      email:    document.getElementById('reg-email').value,
+      password: document.getElementById('reg-pass').value,
+    }, 'res-register');
+  }
+
+  async function login() {
+    const result = await apicall('POST', '/api/auth/login', {
+      email:    document.getElementById('login-email').value,
+      password: document.getElementById('login-pass').value,
+    }, 'res-login');
+    if (result.ok && result.data.token) {
+      jwtToken = result.data.token;
+      updateTokenDisplay();
+      toast('info', 'ℹ Token stored — protected endpoints are now accessible');
+    }
+  }
+
+  async function logout() {
+    const email = document.getElementById('sess-email').value;
+    await apicall('POST', '/api/auth/logout?email=' + encodeURIComponent(email), null, 'res-session');
+    jwtToken = null;
+    updateTokenDisplay();
+  }
+
+  async function checkSession() {
+    const email = document.getElementById('sess-email').value;
+    await apicall('GET', '/api/auth/session?email=' + encodeURIComponent(email), null, 'res-session');
+  }
+
+  // ── ACCOUNTS ──────────────────────────────────────────────────────────────
+
+  async function createAccount() {
+    await apicall('POST', '/api/accounts/create', {
+      ownerEmail:    document.getElementById('acc-email').value,
+      accountNumber: document.getElementById('acc-number').value,
+      accountType:   document.getElementById('acc-type').value,
+      balance:       parseFloat(document.getElementById('acc-balance').value) || 0,
+    }, 'res-create-acc');
+  }
+
+  async function fetchAccount() {
+    const num = document.getElementById('fetch-acc-num').value.trim();
+    await apicall('GET', '/api/accounts/' + encodeURIComponent(num), null, 'res-fetch-acc');
+  }
+
+  async function loadAllAccounts() {
+    const wrap = document.getElementById('accounts-table-wrap');
+    wrap.innerHTML = '<div class="response-box">Loading...</div>';
+    try {
+      const r = await fetch(API + '/api/accounts', { headers: headers(false) });
+      const data = await r.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        wrap.innerHTML = '<div class="response-box">No accounts found.</div>';
+        return;
+      }
+      const rows = data.map(a => `
+        <tr>
+          <td>${a.accountNumber || '—'}</td>
+          <td><span class="badge badge-blue">${a.accountType || '—'}</span></td>
+          <td>${a.ownerName || '—'}</td>
+          <td style="font-weight:600; color:var(--green)">$${Number(a.balance||0).toFixed(2)}</td>
+          <td>${a.active ? '<span class="badge badge-green">ACTIVE</span>' : '<span class="badge badge-red">FROZEN</span>'}</td>
+        </tr>`).join('');
+      wrap.innerHTML = `
+        <table class="data-table">
+          <thead><tr>
+            <th>Account #</th><th>Type</th><th>Owner</th><th>Balance</th><th>Status</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    } catch (e) {
+      wrap.innerHTML = '<div class="response-box error">Error: ' + e.message + '</div>';
+    }
+  }
+
+  // ── TRANSACTIONS ──────────────────────────────────────────────────────────
+
+  async function deposit() {
+    await apicall('POST', '/api/transactions/deposit', {
+      accountNumber: document.getElementById('dep-acc').value,
+      amount: parseFloat(document.getElementById('dep-amount').value),
+    }, 'res-deposit');
+  }
+
+  async function withdraw() {
+    await apicall('POST', '/api/transactions/withdraw', {
+      accountNumber: document.getElementById('wdraw-acc').value,
+      amount: parseFloat(document.getElementById('wdraw-amount').value),
+    }, 'res-withdraw');
+  }
+
+  async function transfer() {
+    await apicall('POST', '/api/transactions/transfer', {
+      sourceAccountNumber:      document.getElementById('tr-src').value,
+      destinationAccountNumber: document.getElementById('tr-dst').value,
+      amount: parseFloat(document.getElementById('tr-amount').value),
+    }, 'res-transfer');
+  }
+
+  async function loadHistory() {
+    const num  = document.getElementById('hist-acc').value.trim();
+    const wrap = document.getElementById('history-table-wrap');
+    wrap.innerHTML = '<div class="response-box">Loading...</div>';
+    try {
+      const r = await fetch(API + '/api/transactions/history/' + encodeURIComponent(num), { headers: headers(false) });
+      const data = await r.json();
+      if (!r.ok) {
+        wrap.innerHTML = '<div class="response-box error">' + JSON.stringify(data, null, 2) + '</div>';
+        return;
+      }
+      if (!Array.isArray(data) || data.length === 0) {
+        wrap.innerHTML = '<div class="response-box">No transactions found for this account.</div>';
+        return;
+      }
+      const typeClass = { DEPOSIT: 'badge-green', WITHDRAWAL: 'badge-red', TRANSFER: 'badge-purple' };
+      const rows = data.map(t => `
+        <tr>
+          <td style="font-family:monospace;font-size:11px">${t.referenceNumber || '—'}</td>
+          <td><span class="badge ${typeClass[t.transactionType] || 'badge-blue'}">${t.transactionType || '—'}</span></td>
+          <td style="color:var(--green);font-weight:600">$${Number(t.amount||0).toFixed(2)}</td>
+          <td style="font-size:11px;color:var(--muted)">${t.sourceAccount || '—'}</td>
+          <td style="font-size:11px;color:var(--muted)">${t.destinationAccount || '—'}</td>
+          <td style="font-size:11px;color:var(--muted)">${t.createdAt ? new Date(t.createdAt).toLocaleString() : '—'}</td>
+        </tr>`).join('');
+      wrap.innerHTML = `
+        <table class="data-table">
+          <thead><tr>
+            <th>Ref #</th><th>Type</th><th>Amount</th><th>From</th><th>To</th><th>Date</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    } catch (e) {
+      wrap.innerHTML = '<div class="response-box error">Error: ' + e.message + '</div>';
+    }
+  }
+
+  // ── ADMIN ─────────────────────────────────────────────────────────────────
+
+  async function adminFreeze() {
+    const acc = document.getElementById('frz-acc').value.trim();
+    await apicall('PUT', '/api/admin/accounts/' + encodeURIComponent(acc) + '/freeze', null, 'res-freeze');
+  }
+
+  async function adminUnblock() {
+    const acc = document.getElementById('unb-acc').value.trim();
+    await apicall('PUT', '/api/admin/accounts/' + encodeURIComponent(acc) + '/unblock', null, 'res-unblock');
+  }
+
+  async function adminDeleteUser() {
+    const uid = document.getElementById('del-uid').value.trim();
+    await apicall('DELETE', '/api/admin/users/' + encodeURIComponent(uid), null, 'res-delete');
+  }
+</script>
+</body>
+</html>
