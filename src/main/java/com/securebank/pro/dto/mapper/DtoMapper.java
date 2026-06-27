@@ -40,11 +40,13 @@ public class DtoMapper {
             return null;
         }
         String ownerName = account.getOwner() != null ? account.getOwner().getFullName() : "N/A";
+        String ownerEmail = account.getOwner() != null ? account.getOwner().getEmail() : "N/A";
         return new AccountResponseDTO(
             account.getAccountNumber(),
             account.getBalance(),
             account.getAccountType() != null ? account.getAccountType().name() : "N/A",
-            ownerName
+            ownerName,
+            ownerEmail
         );
     }
 
