@@ -11,4 +11,5 @@ public interface AccountService {
     List<Account> getAllAccounts();
     void freezeAccount(String accountNumber);
     void unblockAccount(String accountNumber);
+    void deleteAccount(String accountNumber);
 }

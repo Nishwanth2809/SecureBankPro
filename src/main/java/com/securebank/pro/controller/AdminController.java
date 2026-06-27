@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -116,6 +117,45 @@ public class AdminController {
         try {
             userService.removeUser(id);
             return ResponseEntity.ok(new ApiResponseDTO(true, "User with ID " + id + " was successfully removed"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new ApiResponseDTO(false, e.getMessage()));
+        }
+    }
+
+    // ── LIST ALL USERS WITH ACCOUNTS ──────────────────────────────────────────
+    @GetMapping("/users")
+    public ResponseEntity<java.util.List<com.securebank.pro.dto.response.UserResponseDTO>> getAllUsers() {
+        java.util.List<com.securebank.pro.entity.User> users = userService.getAllUsers();
+        java.util.List<com.securebank.pro.entity.Account> allAccounts = accountService.getAllAccounts();
+        
+        java.util.Map<Integer, java.util.List<String>> userAccountsMap = new java.util.HashMap<>();
+        for (com.securebank.pro.entity.Account acc : allAccounts) {
+            if (acc.getOwner() != null) {
+                userAccountsMap
+                    .computeIfAbsent(acc.getOwner().getUserId(), k -> new java.util.ArrayList<>())
+                    .add(acc.getAccountNumber());
+            }
+        }
+        
+        java.util.List<com.securebank.pro.dto.response.UserResponseDTO> response = users.stream().map(u -> {
+            java.util.List<String> accs = userAccountsMap.getOrDefault(u.getUserId(), java.util.Collections.emptyList());
+            return new com.securebank.pro.dto.response.UserResponseDTO(
+                u.getUserId(),
+                u.getFullName(),
+                u.getEmail(),
+                u.getRole() != null ? u.getRole().name() : "CUSTOMER",
+                accs
+            );
+        }).collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    // ── DELETE ACCOUNT ────────────────────────────────────────────────────────
+    @DeleteMapping("/accounts/{accountNumber}")
+    public ResponseEntity<ApiResponseDTO> deleteAccount(@PathVariable String accountNumber) {
+        try {
+            accountService.deleteAccount(accountNumber);
+            return ResponseEntity.ok(new ApiResponseDTO(true, "Account " + accountNumber + " has been successfully deleted."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new ApiResponseDTO(false, e.getMessage()));
         }

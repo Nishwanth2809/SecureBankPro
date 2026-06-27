@@ -10,4 +10,5 @@ public interface UserService {
     User getUserById(int userId);
     User getUserByEmail(String email);
     String encryptPassword(String password);
+    List<User> getAllUsers();
 }

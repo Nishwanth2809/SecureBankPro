@@ -413,6 +413,12 @@ const STYLES = `
   .tx-transfer { background: rgba(0,153,255,0.12); color: var(--accent2); }
   .mono { font-family: var(--mono); font-size: 13px; }
 
+  /* ── Tabs ── */
+  .tabs-row { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .tab-btn { background: transparent; border: none; color: var(--muted); padding: 8px 16px; font-weight: 600; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+  .tab-btn:hover { color: var(--text); background: var(--surface2); }
+  .tab-btn.active { color: var(--accent); background: rgba(0,212,170,0.1); }
+
   /* ── Dialog / Modal ── */
   .overlay {
     position: fixed; inset: 0; z-index: 100;
@@ -581,6 +587,8 @@ const adminAPI = {
   freeze: (n) => api(`/api/admin/accounts/${n}/freeze`, { method: "PUT" }),
   unblock: (n) => api(`/api/admin/accounts/${n}/unblock`, { method: "PUT" }),
   deleteUser: (id) => api(`/api/admin/users/${id}`, { method: "DELETE" }),
+  listUsers: () => api("/api/admin/users", { method: "GET" }),
+  deleteAccount: (n) => api(`/api/admin/accounts/${n}`, { method: "DELETE" }),
 };
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -1249,92 +1257,241 @@ function HistoryPage({ accounts, addToast }) {
   );
 }
 
-// ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
-function AdminPage({ accounts, addToast }) {
-  const [accNum, setAccNum] = useState("");
-  const [userId, setUserId] = useState("");
+function AdminPage({ accounts, addToast, onRefresh }) {
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("accounts");
   const [loading, setLoading] = useState({});
   const [confirm, setConfirm] = useState(null);
 
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const data = await adminAPI.listUsers();
+      setUsers(data);
+    } catch (e) {
+      addToast("error", e.message);
+    }
+    setUsersLoading(false);
+  }, [addToast]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
   const act = async (key, fn, msg) => {
     setLoading(p => ({ ...p, [key]: true }));
-    try { const r = await fn(); addToast("success", r.message || msg); }
-    catch (e) { addToast("error", e.message); }
+    try {
+      const r = await fn();
+      addToast("success", r.message || msg);
+      await loadUsers();
+      if (onRefresh) await onRefresh();
+    }
+    catch (e) {
+      addToast("error", e.message);
+    }
     setLoading(p => ({ ...p, [key]: false }));
     setConfirm(null);
   };
 
+  const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
+
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Admin Panel</h1>
-        <p>Administrative controls — handle with care</p>
+        <h1>Admin Control Panel</h1>
+        <p>Administrative actions and overview — handle with care</p>
       </div>
+
       <div className="page-body">
-        <div className="alert-strip alert-warn" style={{ maxWidth: 700 }}>
-          ⚠️ These actions are irreversible or have immediate financial impact. Requires ROLE_ADMIN privileges.
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px,1fr))", gap: 20, maxWidth: 760, marginTop: 24 }}>
-          {/* Freeze */}
-          <div className="card card-enter">
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🧊</div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Freeze Account</div>
-            <div style={{ color: "#7A90B0", fontSize: 13, marginBottom: 16 }}>Temporarily block all transactions on the account</div>
-            <div className="form-group">
-              <select className="form-input" value={accNum} onChange={e => setAccNum(e.target.value)}>
-                <option value="">Select account…</option>
-                {accounts.map(a => <option key={a.accountId} value={a.accountNumber}>{a.accountNumber}</option>)}
-              </select>
-            </div>
-            <button className="btn btn-warn btn-full btn-sm" disabled={!accNum || loading.freeze}
-              onClick={() => setConfirm({ key: "freeze", label: `Freeze ${accNum}?`, fn: () => adminAPI.freeze(accNum) })}>
-              {loading.freeze ? <Spinner /> : "🧊 Freeze Account"}
-            </button>
+        {/* Stats Row */}
+        <div className="stat-grid" style={{ marginBottom: 24 }}>
+          <div className="stat-card" style={{ animationDelay: "0s" }}>
+            <div className="stat-icon">💰</div>
+            <div className="stat-label">Total Combined Balance</div>
+            <div className="stat-value" style={{ color: "#00D4AA" }}>{fmt(totalBalance)}</div>
+            <div className="stat-sub">Across all user accounts</div>
           </div>
-
-          {/* Unblock */}
-          <div className="card card-enter" style={{ animationDelay: "0.08s" }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🔓</div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Unblock Account</div>
-            <div style={{ color: "#7A90B0", fontSize: 13, marginBottom: 16 }}>Re-activate a frozen or blocked account</div>
-            <div className="form-group">
-              <select className="form-input" onChange={e => setAccNum(e.target.value)}>
-                <option value="">Select account…</option>
-                {accounts.map(a => <option key={a.accountId} value={a.accountNumber}>{a.accountNumber}</option>)}
-              </select>
-            </div>
-            <button className="btn btn-primary btn-full btn-sm" disabled={!accNum || loading.unblock}
-              onClick={() => setConfirm({ key: "unblock", label: `Unblock ${accNum}?`, fn: () => adminAPI.unblock(accNum) })}>
-              {loading.unblock ? <Spinner /> : "🔓 Unblock Account"}
-            </button>
+          <div className="stat-card" style={{ animationDelay: "0.08s" }}>
+            <div className="stat-icon">💳</div>
+            <div className="stat-label">Total Accounts</div>
+            <div className="stat-value">{accounts.length}</div>
+            <div className="stat-sub">Savings and current accounts</div>
           </div>
-
-          {/* Delete User */}
-          <div className="card card-enter" style={{ animationDelay: "0.16s" }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🗑️</div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Delete User</div>
-            <div style={{ color: "#7A90B0", fontSize: 13, marginBottom: 16 }}>Permanently remove a user and all their accounts</div>
-            <div className="form-group">
-              <input className="form-input" type="number" placeholder="User ID (e.g. 4)"
-                value={userId} onChange={e => setUserId(e.target.value)} />
-            </div>
-            <button className="btn btn-danger btn-full btn-sm" disabled={!userId || loading.delete}
-              onClick={() => setConfirm({ key: "delete", label: `Permanently delete user ${userId}? This cannot be undone.`, fn: () => adminAPI.deleteUser(userId) })}>
-              {loading.delete ? <Spinner /> : "🗑️ Delete User"}
-            </button>
+          <div className="stat-card" style={{ animationDelay: "0.16s" }}>
+            <div className="stat-icon">👥</div>
+            <div className="stat-label">Registered Users</div>
+            <div className="stat-value">{usersLoading ? "..." : users.length}</div>
+            <div className="stat-sub">Customers and administrators</div>
           </div>
         </div>
+
+        {/* Tab Row */}
+        <div className="tabs-row">
+          <button className={`tab-btn ${activeTab === "accounts" ? "active" : ""}`} onClick={() => setActiveTab("accounts")}>
+            💳 Manage Accounts
+          </button>
+          <button className={`tab-btn ${activeTab === "users" ? "active" : ""}`} onClick={() => setActiveTab("users")}>
+            👥 Manage Users
+          </button>
+        </div>
+
+        {activeTab === "accounts" ? (
+          <div className="table-wrap card-enter">
+            <table>
+              <thead>
+                <tr>
+                  <th>Account Number</th>
+                  <th>Owner Name</th>
+                  <th>Account Type</th>
+                  <th>Balance</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>
+                      No accounts exist in the database.
+                    </td>
+                  </tr>
+                ) : (
+                  accounts.map(a => (
+                    <tr key={a.accountNumber}>
+                      <td className="mono" style={{ fontWeight: 600 }}>{a.accountNumber}</td>
+                      <td>{a.ownerName || "N/A"}</td>
+                      <td>
+                        <span className={`tx-type ${a.accountType === "SAVINGS" ? "tx-deposit" : "tx-transfer"}`}>
+                          {a.accountType}
+                        </span>
+                      </td>
+                      <td className="mono" style={{ fontWeight: 600 }}>{fmt(a.balance)}</td>
+                      <td>
+                        <span className={`tx-type ${a.active ? "tx-deposit" : "tx-withdraw"}`}>
+                          {a.active ? "● Active" : "■ Frozen"}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: 8 }}>
+                          {a.active ? (
+                            <button className="btn btn-warn btn-sm" style={{ padding: "4px 10px" }}
+                              onClick={() => setConfirm({
+                                key: `freeze-${a.accountNumber}`,
+                                label: `Are you sure you want to freeze and deactivate account ${a.accountNumber}? This will block deposits and withdrawals.`,
+                                fn: () => adminAPI.freeze(a.accountNumber)
+                              })}
+                              disabled={loading[`freeze-${a.accountNumber}`]}>
+                              🧊 Freeze
+                            </button>
+                          ) : (
+                            <button className="btn btn-primary btn-sm" style={{ padding: "4px 10px", background: "rgba(0,212,170,0.12)", color: "var(--accent)" }}
+                              onClick={() => setConfirm({
+                                key: `activate-${a.accountNumber}`,
+                                label: `Are you sure you want to unblock and activate account ${a.accountNumber}?`,
+                                fn: () => adminAPI.unblock(a.accountNumber)
+                              })}
+                              disabled={loading[`activate-${a.accountNumber}`]}>
+                              ⚡ Activate
+                            </button>
+                          )}
+                          <button className="btn btn-danger btn-sm" style={{ padding: "4px 10px" }}
+                            onClick={() => setConfirm({
+                              key: `del-acc-${a.accountNumber}`,
+                              label: `Are you sure you want to permanently delete account ${a.accountNumber}? This cannot be undone.`,
+                              fn: () => adminAPI.deleteAccount(a.accountNumber)
+                            })}
+                            disabled={loading[`del-acc-${a.accountNumber}`]}>
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="table-wrap card-enter">
+            <table>
+              <thead>
+                <tr>
+                  <th>User ID</th>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Accounts</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usersLoading ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>
+                      Loading users list...
+                    </td>
+                  </tr>
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>
+                      No users found.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map(u => (
+                    <tr key={u.userId}>
+                      <td className="mono">{u.userId}</td>
+                      <td style={{ fontWeight: 600 }}>{u.fullName}</td>
+                      <td>{u.email}</td>
+                      <td>
+                        <span className={`tx-type ${u.role === "ADMIN" ? "tx-withdraw" : "tx-deposit"}`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td>
+                        {u.accountNumbers && u.accountNumbers.length > 0 ? (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {u.accountNumbers.map(n => (
+                              <span key={n} className="mono" style={{ background: "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: 4, fontSize: 11 }}>
+                                {n}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--muted)", fontSize: 13 }}>No accounts</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button className="btn btn-danger btn-sm" style={{ padding: "4px 10px" }}
+                          disabled={u.email === "admin@securebank.com" || loading[`del-user-${u.userId}`]}
+                          onClick={() => setConfirm({
+                            key: `del-user-${u.userId}`,
+                            label: `Are you sure you want to delete user "${u.fullName}" (${u.email}) and all their associated bank accounts? This action is permanent and irreversible.`,
+                            fn: () => adminAPI.deleteUser(u.userId)
+                          })}>
+                          🗑️ Delete User
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {confirm && (
-          <Dialog title="Confirm Action" sub={confirm.label} onClose={() => setConfirm(null)}>
-            <div className="alert-strip alert-warn">⚠️ This action may have significant consequences.</div>
-            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <Dialog title="Confirm Admin Action" sub={confirm.label} onClose={() => setConfirm(null)}>
+            <div className="alert-strip alert-warn" style={{ marginBottom: 16 }}>
+              ⚠️ Administrative overrides bypass normal checks and are permanent.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirm(null)}>Cancel</button>
               <button className="btn btn-danger" style={{ flex: 1 }}
-                onClick={() => act(confirm.key, confirm.fn, "Action completed")}
+                onClick={() => act(confirm.key, confirm.fn, "Action completed successfully")}
                 disabled={loading[confirm.key]}>
-                {loading[confirm.key] ? <Spinner /> : "Confirm"}
+                {loading[confirm.key] ? <Spinner /> : "Confirm Action"}
               </button>
             </div>
           </Dialog>
@@ -1460,7 +1617,7 @@ export default function App() {
       case "create-account": return <CreateAccountPage accounts={accounts} userEmail={userEmail} onRefresh={loadAccounts} addToast={addToast} />;
       case "transactions": return <TransactionsPage accounts={accounts} addToast={addToast} />;
       case "history":      return <HistoryPage accounts={accounts} addToast={addToast} />;
-      case "admin":        return isAdmin ? <AdminPage accounts={accounts} addToast={addToast} /> : <DashboardPage accounts={accounts} onNav={setPage} addToast={addToast} />;
+      case "admin":        return isAdmin ? <AdminPage accounts={accounts} addToast={addToast} onRefresh={loadAccounts} /> : <DashboardPage accounts={accounts} onNav={setPage} addToast={addToast} />;
       default:             return <DashboardPage accounts={accounts} onNav={setPage} addToast={addToast} />;
     }
   };

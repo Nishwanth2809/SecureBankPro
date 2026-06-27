@@ -63,4 +63,13 @@ public class AccountServiceImpl implements AccountService {
         account.unblock();
         accountRepository.save(account);
     }
+
+    @Override
+    public void deleteAccount(String accountNumber) {
+        Account account = accountRepository.findByAccountNumber(accountNumber);
+        if (account == null) {
+            throw new IllegalArgumentException("Account not found: " + accountNumber);
+        }
+        accountRepository.deleteByAccountNumber(accountNumber);
+    }
 }
