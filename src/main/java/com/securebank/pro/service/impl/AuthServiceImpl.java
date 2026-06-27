@@ -56,7 +56,9 @@ public class AuthServiceImpl implements AuthService {
     public synchronized String authenticateUser(String email, String password) {
         boolean authenticated = login(email, password);
         if (authenticated) {
-            return jwtTokenUtil.generateToken(email.toLowerCase().trim());
+            User user = userDAO.findUserByEmail(email.toLowerCase().trim());
+            String role = (user != null && user.getRole() != null) ? user.getRole().name() : "CUSTOMER";
+            return jwtTokenUtil.generateToken(email.toLowerCase().trim(), role);
         }
         return null;
     }

@@ -799,7 +799,8 @@ const navItems = [
   { id: "admin", icon: "🛡️", label: "Admin Panel" },
 ];
 
-function Sidebar({ page, onNav, onLogout, userEmail }) {
+function Sidebar({ page, onNav, onLogout, userEmail, userRole }) {
+  const isAdmin = userRole === "ADMIN" || userEmail === "admin@securebank.com";
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
@@ -825,12 +826,14 @@ function Sidebar({ page, onNav, onLogout, userEmail }) {
           </div>
         ))}
       </div>
-      <div className="nav-section">
-        <div className="nav-label">Settings</div>
-        <div className={`nav-item ${page === "admin" ? "active" : ""}`} onClick={() => onNav("admin")}>
-          <span className="nav-icon">🛡️</span>Admin Panel
+      {isAdmin && (
+        <div className="nav-section">
+          <div className="nav-label">Settings</div>
+          <div className={`nav-item ${page === "admin" ? "active" : ""}`} onClick={() => onNav("admin")}>
+            <span className="nav-icon">🛡️</span>Admin Panel
+          </div>
         </div>
-      </div>
+      )}
       <div className="sidebar-footer">
         <div style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(0,212,170,0.06)", border: "1px solid rgba(0,212,170,0.15)", marginBottom: 10 }}>
           <div style={{ fontSize: 11, color: "#7A90B0", marginBottom: 2 }}>Signed in as</div>
@@ -859,15 +862,15 @@ function DashboardPage({ accounts, onNav, addToast }) {
       <div className="page-body">
         <div className="stat-grid">
           {[
-            { label: "Total Balance", value: fmt(totalBalance), icon: "💰", sub: "Across all accounts", delay: 0 },
-            { label: "Accounts", value: accounts.length, icon: "💳", sub: `${savings.length} savings · ${current.length} current`, delay: 0.08 },
-            { label: "Savings Balance", value: fmt(savings.reduce((s, a) => s + a.balance, 0)), icon: "🏦", sub: `${savings.length} account(s)`, delay: 0.12 },
-            { label: "Current Balance", value: fmt(current.reduce((s, a) => s + a.balance, 0)), icon: "⚡", sub: `${current.length} account(s)`, delay: 0.16 },
-          ].map((s, i) => (
-            <div key={i} className="stat-card" style={{ animationDelay: `${s.delay}s` }}>
+            { label: "Total Balance", value: fmt(totalBalance), icon: "💰", sub: "Across all accounts", delay: 0, show: true },
+            { label: "Accounts", value: accounts.length, icon: "💳", sub: `${savings.length} savings · ${current.length} current`, delay: 0.08, show: true },
+            { label: "Savings Balance", value: fmt(savings.reduce((s, a) => s + a.balance, 0)), icon: "🏦", sub: `${savings.length} account(s)`, delay: 0.12, show: savings.length > 0 },
+            { label: "Current Balance", value: fmt(current.reduce((s, a) => s + a.balance, 0)), icon: "⚡", sub: `${current.length} account(s)`, delay: 0.16, show: current.length > 0 },
+          ].filter(s => s.show).map((s, i) => (
+            <div key={s.label} className="stat-card" style={{ animationDelay: `${s.delay}s` }}>
               <div className="stat-icon">{s.icon}</div>
               <div className="stat-label">{s.label}</div>
-              <div className="stat-value" style={{ color: i === 0 ? "#00D4AA" : "#E8F0FE" }}>{s.value}</div>
+              <div className="stat-value" style={{ color: s.label === "Total Balance" ? "#00D4AA" : "#E8F0FE" }}>{s.value}</div>
               <div className="stat-sub">{s.sub}</div>
             </div>
           ))}
@@ -1359,6 +1362,16 @@ export default function App() {
     }
     return "";
   });
+  const [userRole, setUserRole] = useState(() => {
+    const role = localStorage.getItem("userRole");
+    if (role) return role;
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      const parsed = parseJwt(token);
+      return parsed ? parsed.role : "CUSTOMER";
+    }
+    return "CUSTOMER";
+  });
   const [registerMsg, setRegisterMsg] = useState("");
 
   const addToast = useCallback((type, msg) => {
@@ -1368,15 +1381,22 @@ export default function App() {
   }, []);
 
   const loadAccounts = useCallback(async () => {
+    if (!userEmail) return;
     setAccsLoading(true);
     try {
       const data = await accountAPI.list();
       const unique = data.filter((v, i, a) => a.findIndex(t => t.accountNumber === v.accountNumber) === i);
-      setAccounts(unique);
+      
+      const isAdminUser = userRole === "ADMIN" || userEmail === "admin@securebank.com";
+      const filtered = isAdminUser 
+        ? unique 
+        : unique.filter(acc => acc.ownerEmail === userEmail);
+        
+      setAccounts(filtered);
     }
     catch (e) { console.error(e); }
     setAccsLoading(false);
-  }, []);
+  }, [userEmail, userRole]);
 
   useEffect(() => {
     if (auth) loadAccounts();
@@ -1386,9 +1406,15 @@ export default function App() {
     const token = localStorage.getItem("authToken");
     if (token) {
       const parsed = parseJwt(token);
-      if (parsed && parsed.sub) {
-        localStorage.setItem("userEmail", parsed.sub);
-        setUserEmail(parsed.sub);
+      if (parsed) {
+        if (parsed.sub) {
+          localStorage.setItem("userEmail", parsed.sub);
+          setUserEmail(parsed.sub);
+        }
+        if (parsed.role) {
+          localStorage.setItem("userRole", parsed.role);
+          setUserRole(parsed.role);
+        }
       }
     }
     setAuth(true);
@@ -1397,10 +1423,12 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("userRole");
     setAuth(false);
     setAuthPage("login");
     setAccounts([]);
     setPage("dashboard");
+    setUserRole("CUSTOMER");
   };
 
   if (!auth) {
@@ -1423,6 +1451,8 @@ export default function App() {
     );
   }
 
+  const isAdmin = userRole === "ADMIN" || userEmail === "admin@securebank.com";
+
   const renderPage = () => {
     switch (page) {
       case "dashboard":    return <DashboardPage accounts={accounts} onNav={setPage} addToast={addToast} />;
@@ -1430,7 +1460,7 @@ export default function App() {
       case "create-account": return <CreateAccountPage accounts={accounts} userEmail={userEmail} onRefresh={loadAccounts} addToast={addToast} />;
       case "transactions": return <TransactionsPage accounts={accounts} addToast={addToast} />;
       case "history":      return <HistoryPage accounts={accounts} addToast={addToast} />;
-      case "admin":        return <AdminPage accounts={accounts} addToast={addToast} />;
+      case "admin":        return isAdmin ? <AdminPage accounts={accounts} addToast={addToast} /> : <DashboardPage accounts={accounts} onNav={setPage} addToast={addToast} />;
       default:             return <DashboardPage accounts={accounts} onNav={setPage} addToast={addToast} />;
     }
   };
@@ -1439,7 +1469,7 @@ export default function App() {
     <>
       <style>{STYLES}</style>
       <div className="app-shell">
-        <Sidebar page={page} onNav={setPage} onLogout={handleLogout} userEmail={userEmail} />
+        <Sidebar page={page} onNav={setPage} onLogout={handleLogout} userEmail={userEmail} userRole={userRole} />
         <div className="main-content">
           {renderPage()}
         </div>

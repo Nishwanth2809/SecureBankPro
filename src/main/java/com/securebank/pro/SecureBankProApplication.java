@@ -64,113 +64,32 @@ public class SecureBankProApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // Clear repositories first to ensure clean database state for demo
+        // Clear repositories first to ensure clean database state
         userRepository.clear();
         accountRepository.clear();
         transactionRepository.clear();
         adminRepository.clear();
 
-        // Clean up old files from previous runs to ensure fresh logs
+        // Clean up old files from previous runs
         new File("logs/transactions.txt").delete();
         new File("logs/bank_activity.log").delete();
         new File("exports/Nishant_Savings_Statement.txt").delete();
         new File("backups/database.ser").delete();
 
-        BankLogger.info("Starting SecureBankPro Application — Phase 7: Spring Boot Setup");
+        BankLogger.info("Starting SecureBankPro Application — Clean Database");
 
         System.out.println("============================================================");
-        System.out.println("  SecureBankPro — Phase 7: Spring Boot Setup");
+        System.out.println("  SecureBankPro — Clean Database");
         System.out.println("============================================================\n");
 
-        // ── Step 1: Initialize System & Populate Data ─────────────────────────
-        System.out.println("──── 1. Populate System Data (Automatically logged via BankLogger) ────");
-
-        User nishant = new User("Nishant Sharma", "nishant@example.com", "Pass@123");
-        User kiran = new User("Kiran Patel", "kiran@example.com", "Kiran@567");
-        userService.addUser(nishant);
-        userService.addUser(kiran);
-
+        // Seed Admin User (essential for admin console capabilities)
         Admin admin = new Admin(0, "Bank Admin", "admin@securebank.com", passwordEncoder.encode("Admin@123"), com.securebank.pro.enums.Role.ADMIN, true, false, "Operations");
         userRepository.save(admin);
         adminRepository.save(admin);
 
-        Account savings = Account.createAccount(AccountType.SAVINGS, "SBP1001", nishant, new BigDecimal("1000.00"));
-        Account current = Account.createAccount(AccountType.CURRENT, "SBP2001", nishant, new BigDecimal("500.00"));
-        savings.createAccount();
-        current.createAccount();
-
-        accountRepository.save(savings);
-        accountRepository.save(current);
-
-        // Perform some transactions (triggers file writing and logging)
-        bankService.deposit(savings, new BigDecimal("250.00"));
-        bankService.withdraw(savings, new BigDecimal("100.00"));
-        try {
-            bankService.transferMoney(savings, current, new BigDecimal("150.00"));
-        } catch (TransactionFailedException e) {
-            System.out.println("Transfer failed: " + e.getMessage());
-        }
-
-        // Test logging in auth events
-        authService.login("nishant@example.com", "Pass@123");
-        authService.login("kiran@example.com", "WrongPassword");
-
-        // ── Step 2: Read Transaction Logs ──────
-        System.out.println("\n──── 2. Read Transaction Logs from logs/transactions.txt ────");
-        List<String> rawHistory = fileStorageService.readTransactionHistory();
-        System.out.println("Raw transaction log lines read from file:");
-        for (String record : rawHistory) {
-            System.out.println("  " + record);
-        }
-
-        // ── Step 3: Export Statement ────────────
-        System.out.println("\n──── 3. Generate Account Statement to exports/Nishant_Savings_Statement.txt ────");
-        fileStorageService.exportStatement(savings, "exports/Nishant_Savings_Statement.txt");
-        System.out.println("Checking if export statement file exists in exports/: " + new File("exports/Nishant_Savings_Statement.txt").exists());
-
-        // ── Step 4: Serialization Backup & Restore ───────────────────────────
-        System.out.println("\n──── 4. Database Backup & Restore via Object Serialization ────");
-        System.out.println("Before Backup State:");
+        System.out.println("  Admin User Seeded: admin@securebank.com / Admin@123");
         System.out.println("  Registered Users   : " + userRepository.findAll().size());
         System.out.println("  Registered Accounts: " + accountRepository.findAll().size());
-        System.out.println("  Log Transactions   : " + transactionRepository.findAll().size());
-
-        // Run Backup
-        fileStorageService.backupDatabase("backups/database.ser");
-
-        // Clear all repositories in-memory
-        System.out.println("\n[Action] Clearing all database repositories...");
-        userRepository.clear();
-        accountRepository.clear();
-        transactionRepository.clear();
-        adminRepository.clear();
-
-        System.out.println("Cleared State (verifying):");
-        System.out.println("  Registered Users   : " + userRepository.findAll().size());
-        System.out.println("  Registered Accounts: " + accountRepository.findAll().size());
-        System.out.println("  Log Transactions   : " + transactionRepository.findAll().size());
-
-        // Run Restore
-        System.out.println("\n[Action] Restoring database from backup file backups/database.ser...");
-        fileStorageService.restoreDatabase("backups/database.ser");
-
-        System.out.println("Restored State (verifying recovery):");
-        System.out.println("  Registered Users   : " + userRepository.findAll().size());
-        System.out.println("  Registered Accounts: " + accountRepository.findAll().size());
-        System.out.println("  Log Transactions   : " + transactionRepository.findAll().size());
-
-        // Test lookups to ensure identity is preserved
-        User recoveredUser = userRepository.findByEmail("nishant@example.com");
-        if (recoveredUser != null) {
-            System.out.println("  Recovered User Name: " + recoveredUser.getFullName());
-        }
-        Account recoveredAccount = accountRepository.findByAccountNumber("SBP1001");
-        if (recoveredAccount != null) {
-            System.out.println("  Recovered Account Owner Balance: " + recoveredAccount.getBalance() + " USD");
-        }
-
-        System.out.println("\n============================================================");
-        System.out.println("  SecureBankPro — Phase 7 Spring Boot Setup Complete");
         System.out.println("============================================================\n");
     }
 }

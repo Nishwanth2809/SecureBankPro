@@ -45,6 +45,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                         "/api/auth/**",
+                        "/api/users/register",
                         "/dashboard.html", "/", "/static/**",
                         // Swagger UI & OpenAPI spec
                         "/swagger-ui.html", "/swagger-ui/**",
@@ -52,7 +53,7 @@ public class SecurityConfig {
                         "/swagger-resources/**", "/webjars/**"
                 ).permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/accounts/**", "/api/transactions/**").hasAnyRole("CUSTOMER", "ADMIN")
+                .requestMatchers("/api/accounts", "/api/accounts/**", "/api/transactions", "/api/transactions/**").hasAnyRole("CUSTOMER", "ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
