@@ -64,30 +64,22 @@ public class SecureBankProApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // Clear repositories first to ensure clean database state
-        userRepository.clear();
-        accountRepository.clear();
-        transactionRepository.clear();
-        adminRepository.clear();
-
-        // Clean up old files from previous runs
-        new File("logs/transactions.txt").delete();
-        new File("logs/bank_activity.log").delete();
-        new File("exports/Nishant_Savings_Statement.txt").delete();
-        new File("backups/database.ser").delete();
-
-        BankLogger.info("Starting SecureBankPro Application — Clean Database");
+        BankLogger.info("Starting SecureBankPro Application");
 
         System.out.println("============================================================");
-        System.out.println("  SecureBankPro — Clean Database");
+        System.out.println("  SecureBankPro Application started");
         System.out.println("============================================================\n");
 
-        // Seed Admin User (essential for admin console capabilities)
-        Admin admin = new Admin(0, "Bank Admin", "admin@securebank.com", passwordEncoder.encode("Admin@123"), com.securebank.pro.enums.Role.ADMIN, true, false, "Operations");
-        userRepository.save(admin);
-        adminRepository.save(admin);
+        // Seed Admin User only if not already present
+        if (userRepository.findByEmail("admin@securebank.com") == null) {
+            Admin admin = new Admin(0, "Bank Admin", "admin@securebank.com", passwordEncoder.encode("Admin@123"), com.securebank.pro.enums.Role.ADMIN, true, false, "Operations");
+            userRepository.save(admin);
+            adminRepository.save(admin);
+            System.out.println("  Admin User Seeded: admin@securebank.com / Admin@123");
+        } else {
+            System.out.println("  Admin User already exists. Skipping seeding.");
+        }
 
-        System.out.println("  Admin User Seeded: admin@securebank.com / Admin@123");
         System.out.println("  Registered Users   : " + userRepository.findAll().size());
         System.out.println("  Registered Accounts: " + accountRepository.findAll().size());
         System.out.println("============================================================\n");
