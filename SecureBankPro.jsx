@@ -1360,7 +1360,10 @@ function AdminPage({ accounts, addToast, onRefresh }) {
                   accounts.map(a => (
                     <tr key={a.accountNumber}>
                       <td className="mono" style={{ fontWeight: 600 }}>{a.accountNumber}</td>
-                      <td>{a.ownerName || "N/A"}</td>
+                      <td>
+                        <div>{a.ownerName || "N/A"}</div>
+                        <div style={{ fontSize: 12, color: "#7A90B0", marginTop: 2 }}>{a.ownerEmail || ""}</div>
+                      </td>
                       <td>
                         <span className={`tx-type ${a.accountType === "SAVINGS" ? "tx-deposit" : "tx-transfer"}`}>
                           {a.accountType}
