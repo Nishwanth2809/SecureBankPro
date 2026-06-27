@@ -76,16 +76,10 @@ public class User implements Serializable {
      */
     public boolean registerUser() {
         if (isBlank(fullName)) {
-            System.out.println("[Registration] Full name cannot be blank.");
-            return false;
+            throw new IllegalArgumentException("Full name cannot be blank.");
         }
-        try {
-            PasswordValidator.validateEmail(email);
-            PasswordValidator.validatePassword(password);
-        } catch (IllegalArgumentException e) {
-            System.out.println("[Registration] Validation failed: " + e.getMessage());
-            return false;
-        }
+        PasswordValidator.validateEmail(email);
+        PasswordValidator.validatePassword(password);
         registered = true;
         return true;
     }

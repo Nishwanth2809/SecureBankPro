@@ -26,10 +26,7 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("User cannot be null.");
         }
         if (!user.isRegistered()) {
-            boolean registered = user.registerUser();
-            if (!registered) {
-                throw new IllegalArgumentException("Failed to add user: registration validation failed.");
-            }
+            user.registerUser();
         }
         if (user.getPassword() != null && !isBCrypt(user.getPassword())) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));

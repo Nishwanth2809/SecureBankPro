@@ -125,7 +125,7 @@ public class DatabaseIntegrationTest {
     @Test
     public void testOneToManyAccountToTransactionsRelationship() {
         // Create owner
-        User owner = new User("Bob Blue", "bob@example.com", "Bob@123");
+        User owner = new User("Bob Blue", "bob@example.com", "Bob@12345");
         owner.registerUser();
         userRepository.save(owner);
 
