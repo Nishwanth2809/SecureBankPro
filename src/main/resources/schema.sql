@@ -1,8 +1,4 @@
 -- ── SecureBankPro Schema — PostgreSQL / Supabase ─────────────────────────────
--- Drop tables in dependency order to clean up any previously created tables
-DROP TABLE IF EXISTS transactions CASCADE;
-DROP TABLE IF EXISTS accounts CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
 
 -- Users table (stores customers and admins via Single Table Inheritance)
 -- All column names are unquoted lowercase so PostgreSQL stores them as lowercase.
